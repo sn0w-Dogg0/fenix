@@ -10,6 +10,8 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.android.extensions.LayoutContainer
+import mozilla.components.concept.storage.BookmarkNode
+import mozilla.components.browser.state.state.TabSessionState
 import mozilla.components.feature.tab.collections.TabCollection
 import mozilla.components.feature.top.sites.TopSite
 import org.mozilla.fenix.components.tips.Tip
@@ -27,8 +29,10 @@ private fun normalModeAdapterItems(
     collections: List<TabCollection>,
     expandedCollections: Set<Long>,
     tip: Tip?,
+    recentBookmarks: List<BookmarkNode>,
     showCollectionsPlaceholder: Boolean,
-    showSetAsDefaultBrowserCard: Boolean
+    showSetAsDefaultBrowserCard: Boolean,
+    recentTabs: List<TabSessionState>
 ): List<AdapterItem> {
     val items = mutableListOf<AdapterItem>()
 
@@ -42,6 +46,14 @@ private fun normalModeAdapterItems(
         items.add(AdapterItem.TopSitePager(topSites))
     }
 
+    if (recentTabs.isNotEmpty()) {
+        showRecentTabs(recentTabs, items)
+    }
+
+    if (recentBookmarks.isNotEmpty()) {
+        items.add(AdapterItem.RecentBookmarks(recentBookmarks))
+    }
+
     if (collections.isEmpty()) {
         if (showCollectionsPlaceholder) {
             items.add(AdapterItem.NoCollectionsMessage)
@@ -51,6 +63,16 @@ private fun normalModeAdapterItems(
     }
 
     return items
+}
+
+private fun showRecentTabs(
+    recentTabs: List<TabSessionState>,
+    items: MutableList<AdapterItem>
+) {
+    items.add(AdapterItem.RecentTabsHeader)
+    recentTabs.forEach {
+        items.add(AdapterItem.RecentTabItem(it))
+    }
 }
 
 private fun showCollections(
@@ -115,8 +137,10 @@ private fun HomeFragmentState.toAdapterList(): List<AdapterItem> = when (mode) {
         collections,
         expandedCollections,
         tip,
+        recentBookmarks,
         showCollectionPlaceholder,
-        showSetAsDefaultBrowserCard
+        showSetAsDefaultBrowserCard,
+        recentTabs
     )
     is Mode.Private -> privateModeAdapterItems()
     is Mode.Onboarding -> onboardingAdapterItems(mode.state)
@@ -157,7 +181,6 @@ class SessionControlView(
     }
 
     fun update(state: HomeFragmentState) {
-
         val stateAdapterList = state.toAdapterList()
         if (homeScreenViewModel.shouldScrollToTopSites) {
             sessionControlAdapter.submitList(stateAdapterList) {
